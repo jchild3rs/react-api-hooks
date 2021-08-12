@@ -14,6 +14,10 @@ type UnionToIntersection<U> = (
 ) extends (k: infer I) => void
   ? I
   : never
+  
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Endpoint = (args: any) => any
+type Endpoints = Record<string, Endpoint>
 
 type HookFn<T extends Endpoint> = (
   ...variables: Parameters<T> extends void

@@ -6,6 +6,7 @@
   "scripts": {
     "build": "rollup -c",
     "dev": "rollup -c -w",
+    "lint": "eslint src --fix",
     "size": "size-limit",
     "test": "jest"
   },
@@ -22,6 +23,7 @@
     "@testing-library/react-hooks": "^7.0.1",
     "@types/jest": "^26.0.24",
     "@typescript-eslint/eslint-plugin": "^4.29.1",
+    "@typescript-eslint/parser": "^4.29.1",
     "babel-jest": "^27.0.6",
     "eslint": "^7.32.0",
     "eslint-plugin-react-hooks": "^4.2.0",
@@ -61,6 +63,7 @@
   "eslintConfig": {
     "parser": "@typescript-eslint/parser",
     "plugins": [
+      "react-hooks",
       "@typescript-eslint"
     ],
     "extends": [

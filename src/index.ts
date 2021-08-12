@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Awaited, UnionToIntersection } from './tsUtils';
+import { Awaited, UnionToIntersection } from './tsUtils'
 
-type Endpoints = Record<string, (args: any) => any>
-type Endpoint = Endpoints[keyof Endpoints]
+type Endpoint = (args: any) => any
+type Endpoints = Record<string, Endpoint>
 
 type HookFn<T extends Endpoint> = (
   ...variables: Parameters<T> extends void
@@ -27,7 +27,7 @@ type Hooks<T extends Endpoints> = keyof T extends infer Keys
 function makeEndpointHook<T extends Endpoint>(
   endpoint: T
 ): HookFn<T> {
-  return function useEndpointHook(...Args) {
+  return function useEndpointHook(...args) {
     const [state, setState] = useState<{
       loading: boolean
       result: ReturnType<T> | null
@@ -35,7 +35,7 @@ function makeEndpointHook<T extends Endpoint>(
 
     const fetchResult = () => {
       setState((prev) => ({ ...prev, loading: true }))
-      endpoint(Args).then((result: ReturnType<T>) => {
+      endpoint(args).then((result: ReturnType<T>) => {
         setState((prev) => ({
           ...prev,
           result,
@@ -44,7 +44,7 @@ function makeEndpointHook<T extends Endpoint>(
       })
     }
 
-    useEffect(fetchResult, [])
+    useEffect(fetchResult, [args])
 
     return {
       ...state,

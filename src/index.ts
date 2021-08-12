@@ -4,10 +4,16 @@ import {
   useRef,
   useState,
 } from 'react'
-import { Awaited, UnionToIntersection } from './tsUtils'
 
-type Endpoint = (args: any) => any
-type Endpoints = Record<string, Endpoint>
+type Awaited<T> = T extends PromiseLike<infer U>
+  ? Awaited<U>
+  : T
+
+type UnionToIntersection<U> = (
+  U extends unknown ? (k: U) => void : never
+) extends (k: infer I) => void
+  ? I
+  : never
 
 type HookFn<T extends Endpoint> = (
   ...variables: Parameters<T> extends void
@@ -56,9 +62,9 @@ function makeEndpointHook<T extends Endpoint>(
   }
 }
 
-function asHooks<T extends Endpoints>(endpoint: T) {
+function asHooks<T extends Endpoints>(endpoints: T): UnionToIntersection<Hooks<T>> {
   const hooks: Record<string, unknown> = {}
-  for (const [key, val] of Object.entries(endpoint)) {
+  for (const [key, val] of Object.entries(endpoints)) {
     hooks[
       `use${
         key.charAt(0).toUpperCase() + key.slice(1)
@@ -69,13 +75,13 @@ function asHooks<T extends Endpoints>(endpoint: T) {
   return hooks as UnionToIntersection<Hooks<T>>
 }
 
-function baseFetch<JSONResponse extends unknown>(
+async function baseFetch<JSONResponse extends unknown>(
   url: string,
   options?: RequestInit
 ) {
-  return global
-    .fetch(url, options)
-    .then((res) => res.json() as Promise<JSONResponse>)
+  const res=await fetch(url,options)
+  
+  return await (res.json() as Promise<JSONResponse>)
 }
 
 function makeEndpointBuilder(
@@ -105,17 +111,11 @@ type CreateApiOptions<T> = {
   endpoints: (builder: Builder) => T
 }
 
-type CreateApi = {
-  <T extends Endpoints>(
-    options: CreateApiOptions<T>
-  ): UnionToIntersection<Hooks<T>>
-}
-
-export const createApi: CreateApi = ({
+export const createApi = <T extends Endpoints>({
   baseFetch,
   endpoints,
-}) => {
+}: CreateApiOptions<T>): UnionToIntersection<Hooks<T>> => {
   const builder = makeEndpointBuilder(baseFetch)
 
-  return asHooks(endpoints(builder))
+  return asHooks<T>(endpoints(builder))
 }

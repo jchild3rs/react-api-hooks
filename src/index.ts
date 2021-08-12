@@ -1,4 +1,9 @@
-import { useEffect, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { Awaited, UnionToIntersection } from './tsUtils'
 
 type Endpoint = (args: any) => any
@@ -28,26 +33,24 @@ function makeEndpointHook<T extends Endpoint>(
   endpoint: T
 ): HookFn<T> {
   return function useEndpointHook(...args) {
-    const [state, setState] = useState<{
-      loading: boolean
-      result: ReturnType<T> | null
-    }>({ loading: true, result: null })
+    const [variables] = args
+    const [result, setResult] =
+      useState<ReturnType<T> | null>(null)
+    const variablesRef = useRef(variables)
 
-    const fetchResult = () => {
-      setState((prev) => ({ ...prev, loading: true }))
-      endpoint(args).then((result: ReturnType<T>) => {
-        setState((prev) => ({
-          ...prev,
-          result,
-          loading: false,
-        }))
-      })
-    }
+    const fetchResult = useCallback(() => {
+      endpoint(variablesRef.current).then(
+        (result: ReturnType<T>) => {
+          setResult(result)
+        }
+      )
+    }, [])
 
-    useEffect(fetchResult, [args])
+    useEffect(fetchResult, [fetchResult])
 
     return {
-      ...state,
+      result,
+      loading: null == result,
       refetch: fetchResult,
     }
   }

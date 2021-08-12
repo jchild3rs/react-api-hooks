@@ -4,23 +4,30 @@ import { createApi } from '../src'
 
 describe('createApi', () => {
   beforeEach(() => {
-    fetchMock.mockResponse(JSON.stringify({ data: '12345' }))
+    fetchMock.mockResponse(
+      JSON.stringify({ data: '12345' })
+    )
   })
 
   it('generates usable data-fetching hooks', async () => {
     const api = createApi({
       endpoints: (builder) => ({
-        getOne: builder<{ data: string }>('/graphql1', 'query One {}'),
-        getTwo: builder<{ data: string }, { someVar: string }>(
-          '/graphql2',
-          'query Two {}'
+        getOne: builder<{ data: string }>(
+          '/graphql1',
+          'query One {}'
         ),
+        getTwo: builder<
+          { data: string },
+          { someVar: string }
+        >('/graphql2', 'query Two {}'),
       }),
     })
 
     expect(api.useGetOneQuery).toBeDefined()
 
-    const { result, waitForNextUpdate } = renderHook(() => api.useGetOneQuery())
+    const { result, waitForNextUpdate } = renderHook(() =>
+      api.useGetTwoQuery({ someVar: 'asdf' })
+    )
 
     expect(result.current).toEqual(
       expect.objectContaining({

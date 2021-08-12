@@ -79,7 +79,7 @@ function baseFetch<JSONResponse extends unknown>(
 }
 
 function makeEndpointBuilder(
-  f: typeof baseFetch = baseFetch
+  fetch: typeof baseFetch = baseFetch
 ) {
   return function endpointBuilder<Result, Args = undefined>(
     url: string,
@@ -90,7 +90,7 @@ function makeEndpointBuilder(
         ? [undefined?]
         : [Args]
     ) {
-      return f<Result>(url, {
+      return fetch<Result>(url, {
         method: 'POST',
         body: JSON.stringify({ query, variables: args[0] }),
       })

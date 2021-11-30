@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Playground</title>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module">
+      import 'react-app-polyfill/ie11'
+      import * as React from 'react'
+      import * as ReactDOM from 'react-dom'
+      import { createApi } from '../. '
+
+      const POKEMON_API_URL =
+        'https://graphql-pokemon2.vercel.app'
+      const POKEMON_QUERY = /* GraphQL */ `
+        query pokemons($first: Int!) {
+          pokemons(first: $first) {
+            id
+            number
+            name
+            weight {
+              minimum
+              maximum
+            }
+            height {
+              minimum
+              maximum
+            }
+            classification
+            types
+            resistant
+            weaknesses
+            fleeRate
+            maxCP
+            maxHP
+            image
+          }
+        }
+      `
+
+      const pokeApi = createApi({
+        // pokemon api wants GET graphql requests, so
+        // we override base fetch behavior here
+        baseFetch: (url, options) => {
+          const foo = JSON.parse(options.body)
+
+          let search = Object.entries(foo)
+            .map(
+              ([key, val]) =>
+                `${key}=${
+                  typeof val === 'object'
+                    ? encodeURIComponent(
+                        JSON.stringify(val)
+                      )
+                    : val
+                }`
+            )
+            .join('&')
+
+          return fetch(`${url}?${search}`, {
+            ...options,
+            method: 'GET',
+            body: undefined,
+          }).then((res) => res.json())
+        },
+        endpoints: (builder) => ({
+          pokemons: builder(POKEMON_API_URL, POKEMON_QUERY),
+        }),
+      })
+
+      const { usePokemonsQuery } = pokeApi
+
+      const App = () => {
+        const [index, setIndex] = React.useState(1)
+        const variables = {
+          first: index,
+        }
+
+        const { loading, result, refetch } =
+          usePokemonsQuery({ variables })
+        console.log('render', { loading, result })
+
+        window.refetch = refetch
+
+        return (
+          <div>
+            {loading && <div>Loading!</div>}
+            {result && JSON.stringify(result)}
+            <button
+              onClick={() => {
+                setIndex((prev) => prev + 1)
+              }}
+            >
+              next
+            </button>
+          </div>
+        )
+      }
+
+      ReactDOM.render(
+        <App />,
+        document.getElementById('root')
+      )
+    </script>
+  </body>
+</html>

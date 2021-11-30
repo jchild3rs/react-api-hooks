@@ -14,54 +14,73 @@ type UnionToIntersection<U> = (
 ) extends (k: infer I) => void
   ? I
   : never
-  
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Endpoint = (args: any) => any
 type Endpoints = Record<string, Endpoint>
 
 type HookFn<T extends Endpoint> = (
-  ...variables: Parameters<T> extends void
-    ? [undefined?]
-    : [Parameters<T>][0]
+  options: {
+    variables: Parameters<T>[0],
+    initialResult?: Awaited<ReturnType<T>>
+  }
 ) => {
   loading: boolean
   result: Awaited<ReturnType<T>> | null
-  refetch: () => void
+  refetch: (variables?: Parameters<T>[0]) => void
+
 }
 
 type Hooks<T extends Endpoints> = keyof T extends infer Keys
   ? Keys extends string
-    ? {
-        [K in Keys as `use${Capitalize<K>}Query`]: HookFn<
-          T[keyof T]
-        >
-      }
-    : never
+  ? {
+    [K in Keys as `use${Capitalize<K>}Query`]: HookFn<
+      T[keyof T]
+    >
+  }
+  : never
   : never
 
 function makeEndpointHook<T extends Endpoint>(
   endpoint: T
 ): HookFn<T> {
-  return function useEndpointHook(...args) {
-    const [variables] = args
-    const [result, setResult] =
-      useState<ReturnType<T> | null>(null)
-    const variablesRef = useRef(variables)
+  return function useEndpointHook(options) {
+    const [state, setState] = useState<{ result: ReturnType<T> | null, loading: boolean, variables: any }>({
+      loading: !options.initialResult,
+      result: options.initialResult ?? null,
+      variables: options.variables
+    })
+    const variablesRef = useRef(null)
 
-    const fetchResult = useCallback(() => {
-      endpoint(variablesRef.current).then(
+    const fetcher = useCallback((vars) => {
+      setState(prev => ({ ...prev, loading: true }))
+
+      return endpoint(vars).then(
         (result: ReturnType<T>) => {
-          setResult(result)
+          setState(prev => ({ ...prev, result, loading: false }))
         }
       )
+
     }, [])
 
-    useEffect(fetchResult, [fetchResult])
+    useEffect(() => {
+      fetcher(state.variables)
+    }, [fetcher, state.variables])
+
+    useEffect(() => {
+      if (variablesRef.current && JSON.stringify(options.variables) === JSON.stringify(variablesRef.current)) {
+        return;
+      }
+      variablesRef.current = options.variables
+
+      setState(prev => ({ ...prev, variables: options.variables }))
+    }, [options])
 
     return {
-      result,
-      loading: null == result,
-      refetch: fetchResult,
+      ...state,
+      refetch: variables => {
+        setState(prev => ({ ...prev, variables }))
+      },
     }
   }
 }
@@ -70,8 +89,7 @@ function asHooks<T extends Endpoints>(endpoints: T): UnionToIntersection<Hooks<T
   const hooks: Record<string, unknown> = {}
   for (const [key, val] of Object.entries(endpoints)) {
     hooks[
-      `use${
-        key.charAt(0).toUpperCase() + key.slice(1)
+      `use${key.charAt(0).toUpperCase() + key.slice(1)
       }Query`
     ] = makeEndpointHook(val)
   }
@@ -79,12 +97,12 @@ function asHooks<T extends Endpoints>(endpoints: T): UnionToIntersection<Hooks<T
   return hooks as UnionToIntersection<Hooks<T>>
 }
 
-async function baseFetch<JSONResponse extends unknown>(
+async function baseFetch<JSONResponse = unknown>(
   url: string,
   options?: RequestInit
 ) {
-  const res=await fetch(url,options)
-  
+  const res = await fetch(url, options)
+
   return await (res.json() as Promise<JSONResponse>)
 }
 

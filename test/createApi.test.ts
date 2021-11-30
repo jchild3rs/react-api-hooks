@@ -26,19 +26,23 @@ describe('createApi', () => {
     expect(api.useGetOneQuery).toBeDefined()
 
     const { result, waitForNextUpdate } = renderHook(() =>
-      api.useGetTwoQuery({ someVar: 'asdf' })
+      api.useGetTwoQuery({ variables: { someVar: 'asdf' }, initialResult: { data: 'bar' } })
     )
 
     expect(result.current).toEqual(
       expect.objectContaining({
         loading: true,
-        result: null,
+        result: { data: 'bar' },
+        refetch: expect.any(Function)
       })
     )
 
     await waitForNextUpdate()
 
-    expect(global.fetch).toHaveBeenCalled()
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      "/graphql2", { "body": "{\"query\":\"query Two {}\",\"variables\":{\"someVar\":\"asdf\"}}", "method": "POST" }
+    )
+
     expect(result.current).toEqual(
       expect.objectContaining({
         loading: false,
